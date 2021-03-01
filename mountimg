@@ -1,6 +1,7 @@
 #!/bin/bash
 #
 # Copyright (C) 2016 Alexander Amelkin <alexander@amelkin.msk.ru>
+# Modified by Jumar Macato 2021
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -28,7 +29,7 @@ OPTIONS="$*"
 
 if [ ! -f "$IMAGE" ] || [ -z "$PART" ] || [ -z "$WHERE" ]; then
 	echo "Disk image partition mounter by Alexander Amelkin."
-	echo "Version 1.0"
+	echo "Version 1.5"
 	echo
 	echo "Usage: mountimg <image> <partition> <where> [<mount options>]"
 	echo "Example: mountimg sdcard.img 1 /mnt/sdcard0p1 -t vfat -o ro,codepage=866,iocharset=utf-8"
@@ -43,9 +44,17 @@ OFFSET=$(
 	     /.+/ { print $2; found=1 }
 	     END { if(!found) exit 1 }'
 	) || { echo "No such partition in the image"; exit 1; }
+	
+SIZELIMIT=$(
+	sfdisk -l $IMAGE |
+	grep $IMAGE$PART |
+	awk 'BEGIN { FS="[ *\t]+"}
+	     /.+/ { print $4; found=1 }
+	     END { if(!found) exit 1 }'
+	) || { echo "No such partition in the image"; exit 1; }
 
-echo "Mounting $IMAGE partition $PART (offset $OFFSET) to $WHERE via $LODEV"
+echo "Mounting $IMAGE partition $PART (offset $OFFSET, size $SIZELIMIT) to $WHERE via $LODEV"
 
 set -e
 
-mount $OPTIONS -o loop,offset=$((OFFSET * 512)) $IMAGE $WHERE
+mount $OPTIONS -o loop,offset=$((OFFSET * 512)),sizelimit=$((SIZELIMIT * 512)) $IMAGE $WHERE
